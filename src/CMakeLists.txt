@@ -1,0 +1,16 @@
+# We tell CMake what directory to include for the headers.
+# CARE! the SmartPot prefix is the NAME OF OUR PROJECT we set
+# up in the root directory.
+include_directories(${SmartPot_SOURCE_DIR}/include)
+
+# Create a variable with our src directory name.
+set(SRC_DIR ${SmartPot_SOURCE_DIR}/src)
+
+# Set the files which shall be included in the library.
+set(SRC_FILES   ${SRC_DIR}/SmartPot.cpp
+                ${SRC_DIR}/SmartPotEndpoint.cpp
+                ${SRC_DIR}/Sqrt.cpp
+)
+
+# We add the source files we want to have in the library.
+add_library(SmartPotLib ${SRC_FILES})
