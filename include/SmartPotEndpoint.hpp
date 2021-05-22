@@ -9,6 +9,9 @@
 
 #include "SmartPot.hpp"
 
+#include <iostream>
+#include <signal.h>
+// Our HTTP library.
 #include <pistache/net.h>
 #include <pistache/http.h>
 #include <pistache/peer.h>
@@ -17,7 +20,8 @@
 #include <pistache/router.h>
 #include <pistache/endpoint.h>
 #include <pistache/common.h>
-#include <signal.h>
+// Our MQTT library.
+#include <mosquitto.h>
 
 
 using namespace std;
@@ -31,39 +35,44 @@ namespace pot
 class SmartPotEndpoint
 {
     public:
-        SmartPotEndpoint    (Address address);
-       ~SmartPotEndpoint    (void); 
+        SmartPotEndpoint (Address address);
+       ~SmartPotEndpoint (void); 
 
         // Server initialization.
-        void init           (size_t threadCount = 2);
+        void init        (void);
 
         // Server start.
-        void start          (void);
+        void start       (void);
 
         // Server stop.
-        void stop           (void);
+        void stop        (void);
 
 
     private:
-        void createRoutes   (void);
+        void getSetting (const Rest::Request& request,
+                         Http::ResponseWriter response);
 
-        void testerFunction (const Rest::Request& request,
-                             Http::ResponseWriter response);
-
-        void getSetting     (const Rest::Request& request,
-                             Http::ResponseWriter response);
-
-        void setSetting     (const Rest::Request& request,
-                             Http::ResponseWriter response);
+        void setSetting (const Rest::Request& request,
+                        Http::ResponseWriter response);
+        
+        void createHttpRoutes (void);
+                                 
 
         // Our Endpoint for the http server thread.
         std::shared_ptr <Http::Endpoint> httpEndpoint;
-
-        // The router for our routes.
+        // The router for our HTTP routes.
         Rest::Router router;
+
+
+        // Our MQTT Subscriber.
+        //TODO: Change this to smart pointer.
+        // int mosquittoID;
+        struct mosquitto* mosquittoSub;
+
 
         // The actual smart pot.
         SmartPot smartPot;
+
 
         // Lock variable which prohibits the threads to concurrently edit
         // the same variable.

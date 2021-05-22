@@ -6,8 +6,11 @@ include_directories(${SmartPot_SOURCE_DIR}/include)
 # Create a variable with our src directory name.
 set(SRC_DIR ${SmartPot_SOURCE_DIR}/src)
 
+set(CMAKE_CXX_FLAGS "-std=c++17 -fopenmp")
+
 # Set the files which shall be included in the library.
-set(SRC_FILES   ${SRC_DIR}/SmartPot.cpp
+set(SRC_FILES   ${SRC_DIR}/MQTTHelper.cpp
+                ${SRC_DIR}/SmartPot.cpp
                 ${SRC_DIR}/SmartPotEndpoint.cpp
                 ${SRC_DIR}/Sqrt.cpp
 )

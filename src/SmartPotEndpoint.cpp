@@ -5,46 +5,80 @@
 /// the @b SmartPot class.
 ///
 #include "SmartPotEndpoint.hpp"
+#include "MQTTHelper.hpp"
 
 #include <string>
+#include <omp.h>
 
 
 namespace pot
 {
-
 SmartPotEndpoint::SmartPotEndpoint(Address address)
 {
+    // Create the HTTP Endpoint.
     httpEndpoint = std::make_shared<Http::Endpoint>(address);
+
+    // Create the MQTT Subscriber.
+    mosquitto_lib_init();
+    //                            HostName   CleanSession SessionID 
+    mosquittoSub = mosquitto_new("SmartPot", true,        NULL);
 }
 
 
 SmartPotEndpoint::~SmartPotEndpoint(void)
 {
-
+    mosquitto_destroy     (mosquittoSub);
+	mosquitto_lib_cleanup ();
 }
 
 
 ///
 /// @brief Server initialization.
 ///
-void SmartPotEndpoint::init(size_t threadCount)
+void SmartPotEndpoint::init(void)
 {
-    // Get the optimal settings for our @b threadCount.
-    auto settings = Http::Endpoint::options().threads(threadCount);
+    // Get the optimal settings for our HTTP endpoint.
+    auto settings = Http::Endpoint::options();
     httpEndpoint->init(settings);
+    // Create the http routes we'll use.
+    createHttpRoutes();
 
-    // Create the routes we'll use.
-    createRoutes();
+    // Setup MQTT function calls for connection and received messages.
+    mosquitto_connect_callback_set(mosquittoSub, mqtt::mosquittoOnConnect);
+	mosquitto_message_callback_set(mosquittoSub, mqtt::mosquittoOnMessage);
 }
 
 
 ///
-/// @brief Server start.
+/// @brief Servers start.
 ///
 void SmartPotEndpoint::start(void)
 {
-    httpEndpoint->setHandler(router.handler());
-    httpEndpoint->serveThreaded();
+    // Start the parallel region for the HTTP and MQTT servers.
+    #pragma omp parallel sections
+    {
+        // The HTTP server.
+        #pragma omp section
+        {   
+            // cout << "HTTP " << omp_get_thread_num() << endl;
+            httpEndpoint->setHandler(router.handler());
+            httpEndpoint->serveThreaded();
+        }
+
+        // The MQTT server.
+        #pragma omp section
+        {
+            // cout << "MQTT " << omp_get_thread_num() << endl;
+            if (mosquitto_connect(mosquittoSub, "localhost", 1883, 60))
+            {
+                std::cout << "Could not connect to MQTT broker." << endl;
+            }
+            else
+            {
+                mosquitto_loop_start(mosquittoSub);
+            }
+        }
+    }
 }
 
 
@@ -53,7 +87,12 @@ void SmartPotEndpoint::start(void)
 ///
 void SmartPotEndpoint::stop(void)
 {
+    // Stop the HTTP server.
     httpEndpoint->shutdown();
+
+    // Stop the MQTT server and disconnect from the broker.
+    mosquitto_loop_stop  (mosquittoSub, true);
+    mosquitto_disconnect (mosquittoSub);
 }
 
 
@@ -61,35 +100,16 @@ void SmartPotEndpoint::stop(void)
 /// @brief Function which creates our http routes, called at 
 /// server initialization.
 ///
-void SmartPotEndpoint::createRoutes(void)
+void SmartPotEndpoint::createHttpRoutes(void)
 {
     using namespace Rest;
-
-    Routes::Get(router, "/test", 
-                Routes::bind(&SmartPotEndpoint::testerFunction, this));
 
     Routes::Get(router, "/settings/:settingName/",
                 Routes::bind(&SmartPotEndpoint::getSetting, this));
 
     Routes::Put(router, "/settings/:settingName/:value",
-                Routes::bind(&SmartPotEndpoint::setSetting, this));
+                Routes::bind(&SmartPotEndpoint::setSetting, this)); 
 }
-
-
-///
-/// @brief Just a function to test if everything is OK.
-///
-void SmartPotEndpoint::testerFunction(const Rest::Request& request,
-                                      Http::ResponseWriter response)
-{   
-    using namespace Http;
-    response.headers()
-                .add<Header::Server>("pistache/0.2")
-                .add<Header::ContentType>(MIME(Text, Plain));
-
-    response.send(Http::Code::Ok, "MERGE!");
-}
-
 
 ///
 /// @brief GET request function which returns the value of the
@@ -101,9 +121,8 @@ void SmartPotEndpoint::testerFunction(const Rest::Request& request,
 void SmartPotEndpoint::getSetting(const Rest::Request& request,
                                   Http::ResponseWriter response)
 {
-
     // Lock the pot settings.
-    // TODO: REVISE THIS SHIT.
+    // TODO: REVISE THIS.
     Guard guard(potLock);
 
     // Setup some headers for the response.
@@ -125,8 +144,8 @@ void SmartPotEndpoint::getSetting(const Rest::Request& request,
     else
     {
         response.send(Http::Code::Ok, settingName + " is " + settingValue);
+        std::cout << settingName + " is " + settingValue << endl;
     }
-    
 }
 
 
@@ -140,9 +159,8 @@ void SmartPotEndpoint::getSetting(const Rest::Request& request,
 void SmartPotEndpoint::setSetting(const Rest::Request& request,
                                   Http::ResponseWriter response)
 {
-    
     // Lock the pot settings. 
-    // TODO: REVISE THIS SHIT.
+    // TODO: REVISE THIS.
     Guard guard(potLock);
     
     // Setup some headers for the response.
@@ -177,8 +195,9 @@ void SmartPotEndpoint::setSetting(const Rest::Request& request,
     else
     {
         response.send(Http::Code::Ok, settingName + " was set to " + settingValue);
+        std::cout << settingName + " is " + settingValue << endl;
     }
-
 }
+
 
 }

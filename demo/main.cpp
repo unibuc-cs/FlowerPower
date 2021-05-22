@@ -9,9 +9,9 @@
 // #include <pistache/router.h>
 // #include <pistache/endpoint.h>
 // #include <pistache/common.h>
-
+#include <mosquitto.h>
 // #include <signal.h>
-
+#include <omp.h>
 // using namespace std;
 // using namespace Pistache;
 
@@ -39,7 +39,8 @@ int main(int argc, char *argv[])
     Port port(9080);
 
     // Number of threads used by the server
-    int thr = 2;
+    int thr = 4;
+    omp_set_num_threads(thr);
 
     if (argc >= 2) {
         port = static_cast<uint16_t>(std::stol(argv[1]));
@@ -57,7 +58,7 @@ int main(int argc, char *argv[])
     SmartPotEndpoint stats(addr);
 
     // Initialize and start the server
-    stats.init(thr);
+    stats.init();
     stats.start();
 
 
