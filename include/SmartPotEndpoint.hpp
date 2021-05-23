@@ -23,64 +23,67 @@
 // Our MQTT library.
 #include <mosquitto.h>
 
-
 using namespace std;
 using namespace Pistache;
-using Lock  = mutex;
+using Lock = mutex;
 using Guard = lock_guard<Lock>;
 
-namespace pot 
+namespace pot
 {
-    
-class SmartPotEndpoint
-{
+
+    class SmartPotEndpoint
+    {
     public:
-        SmartPotEndpoint (Address address);
-       ~SmartPotEndpoint (void); 
+        SmartPotEndpoint(Address address);
+        ~SmartPotEndpoint(void);
 
         // Server initialization.
-        void init        (void);
+        void init(void);
 
         // Server start.
-        void start       (void);
+        void start(void);
 
         // Server stop.
-        void stop        (void);
-
+        void stop(void);
 
     private:
-        void getSetting (const Rest::Request& request,
-                         Http::ResponseWriter response);
+        void getSetting(const Rest::Request &request,
+                        Http::ResponseWriter response);
 
-        void setSetting (const Rest::Request& request,
-                         Http::ResponseWriter response);
-        
-        void setSoil    (const Rest::Request &request,
-                         Http::ResponseWriter response);
+        void setSetting(const Rest::Request &request,
+                        Http::ResponseWriter response);
 
-        void createHttpRoutes (void);
-                                 
+        void postSettingUpdate(const Rest::Request &request,
+                               Http::ResponseWriter response);
+
+        void postPlantType(const Rest::Request &request,
+                           Http::ResponseWriter response);
+
+        void loosenSoil(const Rest::Request &request,
+                        Http::ResponseWriter response);
+
+        // void setSoil    (const Rest::Request &request,
+        //                  Http::ResponseWriter response);
+
+        void createHttpRoutes(void);
 
         // Our Endpoint for the http server thread.
-        std::shared_ptr <Http::Endpoint> httpEndpoint;
+        std::shared_ptr<Http::Endpoint> httpEndpoint;
         // The router for our HTTP routes.
         Rest::Router router;
-
 
         // Our MQTT Subscriber.
         //TODO: Change this to smart pointer.
         // int mosquittoID;
-        struct mosquitto* mosquittoSub;
-
+        struct mosquitto *mosquittoSub;
 
         // The actual smart pot.
         SmartPot smartPot;
 
-
         // Lock variable which prohibits the threads to concurrently edit
         // the same variable.
         Lock potLock;
-};
+    };
 
 }
 
