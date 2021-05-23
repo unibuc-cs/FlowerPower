@@ -12,7 +12,6 @@ set(CMAKE_CXX_FLAGS "-std=c++17 -fopenmp")
 set(SRC_FILES   ${SRC_DIR}/MQTTHelper.cpp
                 ${SRC_DIR}/SmartPot.cpp
                 ${SRC_DIR}/SmartPotEndpoint.cpp
-                ${SRC_DIR}/Sqrt.cpp
 )
 
 # We add the source files we want to have in the library.

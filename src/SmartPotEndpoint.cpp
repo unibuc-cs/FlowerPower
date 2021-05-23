@@ -7,9 +7,16 @@
 #include "SmartPotEndpoint.hpp"
 #include "MQTTHelper.hpp"
 
+// Our JSON Parser.
+#include <rapidjson/document.h>
+#include <rapidjson/writer.h>
+#include <rapidjson/stringbuffer.h>
+
+
 #include <string>
 #include <omp.h>
 
+using namespace rapidjson;
 
 namespace pot
 {
@@ -27,6 +34,10 @@ SmartPotEndpoint::SmartPotEndpoint(Address address)
 
 SmartPotEndpoint::~SmartPotEndpoint(void)
 {
+    
+    // Stop the HTTP server.
+    httpEndpoint->shutdown();
+
     mosquitto_destroy     (mosquittoSub);
 	mosquitto_lib_cleanup ();
 }
@@ -109,7 +120,11 @@ void SmartPotEndpoint::createHttpRoutes(void)
 
     Routes::Put(router, "/settings/:settingName/:value",
                 Routes::bind(&SmartPotEndpoint::setSetting, this)); 
+
+    Routes::Post(router, "/setSoilType",
+                 Routes::bind(&SmartPotEndpoint::setSoil, this));
 }
+
 
 ///
 /// @brief GET request function which returns the value of the
@@ -200,4 +215,97 @@ void SmartPotEndpoint::setSetting(const Rest::Request& request,
 }
 
 
+///
+/// @brief POST request function which sets the value of the
+/// soil based on json input
+///
+/// @returns A response with values from json
+///
+void SmartPotEndpoint::setSoil(const Rest::Request &request,
+                               Http::ResponseWriter response)
+{
+    // Lock the pot settings.
+    // TODO: REVISE THIS
+    Guard guard(potLock);
+
+    // Setup some headers for the response.
+    using namespace Http;
+    using namespace rapidjson;
+
+    response.headers()
+        .add<Header::Server>("pistache/0.2")
+        .add<Header::ContentType>(MIME(Text, Plain));
+
+    Document document;
+    if(document.Parse(request.body().c_str()).HasParseError() || document.IsObject() == false)
+    {
+        response.send(Http::Code::Unprocessable_Entity,
+                      "The schema is not a valid JSON. Impossible to parse.");
+    }
+
+
+    for(auto itr = document.MemberBegin(); itr != document.MemberEnd(); ++itr)
+    {
+        
+        // std::cout << string("Type of member ") << itr->name.GetString()
+        //           << " is a " << typeNameMap[itr->value.GetType()]<<endl; 
+        
+        int    memberType = itr->value.GetType();
+        string memberName = itr->name.GetString();
+
+        string      responseMessage;
+        Http::Code  responseCode;
+
+
+        // if(memberType == 0) // NULL.
+        // {
+        //     if(smartPot.set(memberName, NULL))
+        //     {
+        //         response.send(Http::Code::Unprocessable_Entity,
+        //                   string("Wrong Member name or value for ") + memberName);
+        //     }
+
+        // }
+        // else if (memberType == 1 || memberType == 2) //False or True.
+        // {
+        //     smartPot.set(memberName, NULL);
+        // }
+        // else if (memberType == 3) // If Object we return an invalid response since
+        //                           // we don't have use for support objects.
+        // {
+        //     response.send(Http::Code::Unprocessable_Entity,
+        //                   "Invalid JSON scheme. Unknown Object included in body.");
+        // }
+        // else if (memberType == 4) //  If we have an array.
+        // {   
+        //     // Check it's validity.
+        //     for(size_t i = 0; i < itr)
+        //     if(itr->value.getArray())
+        //     else
+        //     {
+        //         response.send(Http::Code::Unprocessable_Entity,
+        //                   "Invalid JSON scheme. Arrays should only have string elements for now.");
+        //     }
+        // }
+    }
+
+    response.send(Http::Code::Ok, "Gucci");
+
+    // if(document.HasMember("soilType"))
+    // {
+    //     if(document["soilType"].IsString())
+    //     {
+    //         response.send(Http::Code::Ok, document["soilType"].GetString());
+    //     }
+    //     else
+    //     {
+    //         response.send(Http::Code::Ok, "Exista, dar nu e string.");
+
+    //     }
+    // }
+    // else
+    // {
+    //     response.send(Http::Code::Ok, "Nu exista deloc");
+    // }
+}
 }

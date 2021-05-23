@@ -53,8 +53,11 @@ class SmartPotEndpoint
                          Http::ResponseWriter response);
 
         void setSetting (const Rest::Request& request,
-                        Http::ResponseWriter response);
+                         Http::ResponseWriter response);
         
+        void setSoil    (const Rest::Request &request,
+                         Http::ResponseWriter response);
+
         void createHttpRoutes (void);
                                  
 

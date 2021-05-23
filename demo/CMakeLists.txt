@@ -4,6 +4,8 @@
 include_directories(${SmartPot_SOURCE_DIR}/include)
 link_directories(${SmartPot_SOURCE_DIR}/src)
 
+find_package(RapidJSON)
+
 # Set some compile flags (the c++ standard and the multithreading flag)
 set(CMAKE_CXX_FLAGS "-std=c++17 -fopenmp")
 
