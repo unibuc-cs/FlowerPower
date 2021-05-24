@@ -5,7 +5,6 @@
 /// the @b SmartPot class.
 ///
 #include "SmartPotEndpoint.hpp"
-#include "MQTTHelper.hpp"
 
 // Our JSON Parser.
 #include <rapidjson/document.h>
@@ -51,8 +50,9 @@ namespace pot
         createHttpRoutes();
 
         // Setup MQTT function calls for connection and received messages.
-        mosquitto_connect_callback_set(mosquittoSub, mqtt::mosquittoOnConnect);
-        mosquitto_message_callback_set(mosquittoSub, mqtt::mosquittoOnMessage);
+        mosquitto_connect_callback_set(mosquittoSub, mosquittoOnConnect);
+        mosquitto_message_callback_set(mosquittoSub, mosquittoOnMessage);
+        //mosquitto_subscribe_callback_set(mosquittoSub, mosquittoOnSubscribe);
     }
 
     ///
@@ -60,19 +60,19 @@ namespace pot
     ///
     void SmartPotEndpoint::start(void)
     {
-// Start the parallel region for the HTTP and MQTT servers.
-#pragma omp parallel sections
+        // Start the parallel region for the HTTP and MQTT servers.
+        #pragma omp parallel sections 
         {
-// The HTTP server.
-#pragma omp section
+            // The HTTP server.
+            #pragma omp section
             {
                 // cout << "HTTP " << omp_get_thread_num() << endl;
                 httpEndpoint->setHandler(router.handler());
                 httpEndpoint->serveThreaded();
             }
 
-// The MQTT server.
-#pragma omp section
+            // The MQTT server.
+            #pragma omp section
             {
                 // cout << "MQTT " << omp_get_thread_num() << endl;
                 if (mosquitto_connect(mosquittoSub, "localhost", 1883, 60))
@@ -111,10 +111,7 @@ namespace pot
 
         Routes::Get(router, "/settings/:settingName/",
                     Routes::bind(&SmartPotEndpoint::getSetting, this));
-
-        Routes::Get(router, "/status",
-                    Routes::bind(&SmartPotEndpoint::getStatus, this));
-
+        
         Routes::Get(router, "/loosenSoil",
                     Routes::bind(&SmartPotEndpoint::loosenSoil, this));
 
@@ -130,11 +127,12 @@ namespace pot
         Routes::Get(router, "/activateSolarLamp",
                     Routes::bind(&SmartPotEndpoint::activateSolarLamp, this));
 
+
         Routes::Put(router, "/settings",
-                    Routes::bind(&SmartPotEndpoint::postSettingUpdate, this));
+                    Routes::bind(&SmartPotEndpoint::putSettingUpdate, this));
 
         Routes::Put(router, "/plantInfo",
-                    Routes::bind(&SmartPotEndpoint::postPlantType, this));
+                    Routes::bind(&SmartPotEndpoint::putPlantType, this));
     }
 
     ///
@@ -174,7 +172,7 @@ namespace pot
         }
     }
 
-    void SmartPotEndpoint::postSettingUpdate(const Rest::Request &request,
+    void SmartPotEndpoint::putSettingUpdate(const Rest::Request &request,
                                              Http::ResponseWriter response)
     {
         // Lock the pot settings.
@@ -227,7 +225,7 @@ namespace pot
         }
     }
 
-    void SmartPotEndpoint::postPlantType(const Rest::Request &request,
+    void SmartPotEndpoint::putPlantType(const Rest::Request &request,
                                          Http::ResponseWriter response)
     {
         // Lock the pot settings.
@@ -251,6 +249,31 @@ namespace pot
 
         string message = "";
 
+        if(!document["sensorType"].IsNumber())
+        {
+            response.send(Http::Code::Unprocessable_Entity, "sensorType field shall be a double.");
+        }
+        if(!document["species"].IsString())
+        {
+            response.send(Http::Code::Unprocessable_Entity, "species field shall be a string.");
+        }
+        if(!document["color"].IsString())
+        {
+            response.send(Http::Code::Unprocessable_Entity, "color field shall be a string.");
+        }
+        if(!document["type"].IsString())
+        {
+            response.send(Http::Code::Unprocessable_Entity, "type field shall be a string.");
+        }
+        if(!document["height"].IsDouble())
+        {
+            response.send(Http::Code::Unprocessable_Entity, "height field shall be a double.");
+        }
+        if(!document["edible"].IsBool())
+        {
+            response.send(Http::Code::Unprocessable_Entity, "edible field shall be a boolean.");
+        }
+
         double sensorTypeID = document["sensorType"].GetDouble();
         string species = document["species"].GetString();
         string color = document["color"].GetString();
@@ -258,98 +281,177 @@ namespace pot
         double height = document["height"].GetDouble();
         bool edible = document["edible"].GetBool();
 
-        message += species + " " + color + " " + " ";
-
+        message += species + "  " + color + " " + " ";
+        
         // smartPot.set(sensorTypeID, "species", NULL, species); // String set.
         // smartPot.set(sensorTypeID, "color",   NULL, color);   // String set.
         // smartPot.set(sensorTypeID, "type",    NULL, type);    // String set.
         // smartPot.set(sensorTypeID, "height",  NULL, height);  // Double set.
         // smartPot.set(sensorTypeID, "edible",  NULL, edible);  // Bool   set.
 
-        response.send(Http::Code::Ok, message);
+        // response.send(Http::Code::Ok, message);
+        cout<<message<<endl;
     }
 
-    void SmartPotEndpoint::getStatus(const Rest::Request &request,
-                                     Http::ResponseWriter response)
-    {
-        string status = "";
-        if (smartPot.status(status))
-        {
-            response.send(Http::Code::Unprocessable_Entity, status);
-        }
-        else
-        {
-            response.send(Http::Code::Ok, status);
-        }
-    }
+    // void SmartPotEndpoint::getStatus(const Rest::Request &request,
+    //                                  Http::ResponseWriter response)
+    // {
+    //     string status = "";
+    //     // if (smartPot.status(status))
+    //     // {
+    //     //     response.send(Http::Code::Unprocessable_Entity, status);
+    //     // }
+    //     // else
+    //     // {
+    //     //     response.send(Http::Code::Ok, status);
+    //     // }
+    // }
 
     void SmartPotEndpoint::loosenSoil(const Rest::Request &request,
                                       Http::ResponseWriter response)
     {
         string soilLooseningStatus = "";
-        if (smartPot.loosenSoil(soilLooseningStatus))
-        {
-            response.send(Http::Code::Unprocessable_Entity, soilLooseningStatus);
-        }
-        else
-        {
-            response.send(Http::Code::Ok, soilLooseningStatus);
-        }
+        // if (smartPot.loosenSoil(soilLooseningStatus))
+        // {
+        //     response.send(Http::Code::Unprocessable_Entity, soilLooseningStatus);
+        // }
+        // else
+        // {
+        //     response.send(Http::Code::Ok, soilLooseningStatus);
     }
-
+    
     void SmartPotEndpoint::changeSoil(const Rest::Request &request,
                                       Http::ResponseWriter response)
     {
         string soilChangeStatus = "";
-        if (smartPot.changeSoil(soilChangeStatus))
-        {
-            response.send(Http::Code::Unprocessable_Entity, soilChangeStatus);
-        }
-        else
-        {
-            response.send(Http::Code::Ok, soilChangeStatus);
-        }
+        // if (smartPot.changeSoil(soilChangeStatus))
+        // {
+        //     response.send(Http::Code::Unprocessable_Entity, soilChangeStatus);
+        // }
+        // else
+        // {
+        //     response.send(Http::Code::Ok, soilChangeStatus);
+        // }
     }
 
     void SmartPotEndpoint::irrigationSoil(const Rest::Request &request,
                                           Http::ResponseWriter response)
     {
         string irrigationSoilStatus = "";
-        if (smartPot.irrigateSoil(irrigationSoilStatus))
-        {
-            response.send(Http::Code::Unprocessable_Entity, irrigationSoilStatus);
-        }
-        else
-        {
-            response.send(Http::Code::Ok, irrigationSoilStatus);
-        }
+        // if (smartPot.irrigateSoil(irrigationSoilStatus))
+        // {
+        //     response.send(Http::Code::Unprocessable_Entity, irrigationSoilStatus);
+        // }
+        // else
+        // {
+        //     response.send(Http::Code::Ok, irrigationSoilStatus);
+        // }
     }
 
     void SmartPotEndpoint::injectMinerals(const Rest::Request &request,
                                           Http::ResponseWriter response)
     {
         string injectMineralsStatus = "";
-        if (smartPot.injectMinerals(injectMineralsStatus))
-        {
-            response.send(Http::Code::Unprocessable_Entity, injectMineralsStatus);
-        }
-        else
-        {
-            response.send(Http::Code::Ok, injectMineralsStatus);
-        }
+        // if (smartPot.injectMinerals(injectMineralsStatus))
+        // {
+        //     response.send(Http::Code::Unprocessable_Entity, injectMineralsStatus);
+        // }
+        // else
+        // {
+        //     response.send(Http::Code::Ok, injectMineralsStatus);
+        // }
     }
 
     void SmartPotEndpoint::activateSolarLamp(const Rest::Request &request,
                                              Http::ResponseWriter response)
     {
         string activateSolarLampStatus = "";
-        if (smartPot.activateSolarLamp(addSolarLampStatus))
-        {
-            response.send(Http::Code::Unprocessable_Entity, activateSolarLampStatus);
-        }
-        else
-        {
-            response.send(Http::Code::Ok, activateSolarLampStatus);
-        }
+        // if (smartPot.activateSolarLamp(addSolarLampStatus))
+        // {
+        //     response.send(Http::Code::Unprocessable_Entity, activateSolarLampStatus);
+        // }
+        // else
+        // {
+        //     response.send(Http::Code::Ok, activateSolarLampStatus);
+        // }
     }
+
+    void SmartPotEndpoint::mosquittoOnMessage (struct mosquitto *mosq,
+                                                void *obj,
+                                                const struct mosquitto_message *msg)
+    {
+	    // std::cout << string("New message with topic ")
+        //            + string(msg->topic) + ". Message : "
+        //            + string((char *) msg->payload) << endl; // We need to endl or flush the buffer.
+
+        Document document;
+        if (document.Parse((char *) msg->payload).HasParseError() || document.IsObject() == false)
+        {
+            cout<<"NU MERGE"<<endl;
+            return ;
+        }
+
+        string message = "";
+
+        double sensorTypeID = document["sensorType"].GetDouble();
+
+        message += to_string(sensorTypeID) + " ";
+
+        if(document["value"].IsNumber())
+        {
+            // smartPot.set(sensorTypeID, "value",
+            //              document["nutrientType"].IsNull() ? NULL : document["nutrientType"].GetString(),
+            //              document["value"].GetDouble());
+            // cout<<"lol1"<<endl;
+            message += document["nutrientType"].IsNull() ? "NULL" : document["nutrientType"].GetString();
+            message += string(" ") + to_string(document["value"].GetDouble());
+        }
+        else if(document["value"].IsString())
+        {
+            // smartPot.set(sensorTypeID, "value",
+            //              document["nutrientType"].IsNull() ? NULL : document["nutrientType"].GetString(),
+            //              document["value"].GetString());
+            
+            message += document["nutrientType"].IsNull() ? "NULL" : document["nutrientType"].GetString();
+            message += string(" ") + document["value"].GetString();
+        }
+        else if(document["value"].IsBool())
+        {
+            // smartPot.set(sensorTypeID, "value",
+            //              document["nutrientType"].IsNull() ? NULL : document["nutrientType"].GetString(),
+            //              document["value"].GetBool());
+            
+            message += document["nutrientType"].IsNull() ? "NULL" : document["nutrientType"].GetString();
+            message += document["value"].GetBool() ? " true" : " false";
+        }
+
+        // message.c_str()
+
+        mosquitto_publish(mosq, NULL, "test/response", 100, message.c_str(), 0, false);
+
+        cout << message << endl;
+    }
+    
+    void SmartPotEndpoint::mosquittoOnConnect (struct mosquitto *mosq,
+                                               void *obj,
+                                               int rc)
+    {
+	    std::cout << string("MQTT Client ID: ") + to_string(* (int *) obj) << endl;
+
+        if(rc)
+        {
+            std::cout << string("Error with result code: ") +  to_string(rc) << endl;
+        }
+
+        // Subscribe to our "endpoint" topics.
+        mosquitto_subscribe(mosq, NULL, "test", 0);
+    }   
+
+    // void SmartPotEndpoint::mosquittoOnSubscribe (struct mosquitto *mosq,
+    //                                              void *userdata, 
+    //                                              int mid, int qos_count, 
+    //                                              const int *granted_qos)
+    // {
+    //     cout<<"Subscribed to topic: " <<endl;
+    // }
 }

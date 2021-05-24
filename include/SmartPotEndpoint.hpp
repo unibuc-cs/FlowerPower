@@ -46,48 +46,62 @@ namespace pot
         // Server stop.
         void stop(void);
 
+        
     private:
-        void getSetting(const Rest::Request &request,
-                        Http::ResponseWriter response);
-
-        void setSetting(const Rest::Request &request,
-                        Http::ResponseWriter response);
-
-        void postSettingUpdate(const Rest::Request &request,
-                               Http::ResponseWriter response);
-
-        void postPlantType(const Rest::Request &request,
-                           Http::ResponseWriter response);
-
-        void loosenSoil(const Rest::Request &request,
-                        Http::ResponseWriter response);
-
-        void changeSoil(const Rest::Request &request,
-                        Http::ResponseWriter response);
-
-        void irrigationSoil(const Rest::Request &request,
-                            Http::ResponseWriter response);
-
-        void activateSolarLamp(const Rest::Request &request,
-                               Http::ResponseWriter response);
-
         void createHttpRoutes(void);
 
+        // GETs.
+        void getSetting         (const Rest::Request &request,
+                                Http::ResponseWriter response);
+
+        void loosenSoil         (const Rest::Request &request,
+                                Http::ResponseWriter response);
+
+        void changeSoil         (const Rest::Request &request,
+                                Http::ResponseWriter response);
+
+        void irrigationSoil     (const Rest::Request &request,
+                                Http::ResponseWriter response);
+
+        void injectMinerals     (const Rest::Request &request,
+                                Http::ResponseWriter response);
+
+        void activateSolarLamp  (const Rest::Request &request,
+                                Http::ResponseWriter response);
+        
+        // PUTs.
+        void putSettingUpdate  (const Rest::Request &request,
+                                Http::ResponseWriter response);
+
+        void putPlantType      (const Rest::Request &request,
+                                Http::ResponseWriter response);
+
+        // Mosquitto calbacks.
+        static void mosquittoOnMessage  (struct mosquitto *mosq,
+                                        void *obj,
+                                        const struct mosquitto_message *msg);
+                                        
+        static void mosquittoOnConnect  (struct mosquitto *mosq,
+                                        void *obj,
+                                        int rc);
+
+        // static void mosquittoOnSubscribe (struct mosquitto *mosq,
+        //                                   void *userdata, 
+        //                                   int mid, int qos_count, 
+        //                                   const int *granted_qos);
+    
         // Our Endpoint for the http server thread.
         std::shared_ptr<Http::Endpoint> httpEndpoint;
         // The router for our HTTP routes.
         Rest::Router router;
 
         // Our MQTT Subscriber.
-        //TODO: Change this to smart pointer.
-        // int mosquittoID;
         struct mosquitto *mosquittoSub;
 
         // The actual smart pot.
         SmartPot smartPot;
 
-        // Lock variable which prohibits the threads to concurrently edit
-        // the same variable.
+        // Prohibits the threads to concurrently edit the same variable.
         Lock potLock;
     };
 

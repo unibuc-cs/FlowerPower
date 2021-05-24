@@ -21,7 +21,7 @@ sudo apt install libpistache-dev
 3. Install Mosquitto (our MQTT sub/pub/broker).
 
 ```sh
-sudo apt update -y && sudo apt install mosquitto mosquitto-clients -y
+sudo apt install mosquitto mosquitto-clients libmosquitto-dev 
 ```
 
 4. Install RapidJSON as our JSON reading library.  

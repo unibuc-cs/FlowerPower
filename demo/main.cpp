@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
     }
 
     // Set a port on which your server to communicate
-    Port port(9081);
+    Port port(9082);
 
     // Number of threads used by the server
     int thr = 4;
@@ -55,15 +55,16 @@ int main(int argc, char *argv[])
     cout << "Using " << thr << " threads" << endl;
 
     // Instance of the class that defines what the server can do.
-    SmartPotEndpoint stats(addr);
+    SmartPotEndpoint server(addr);
 
     // Initialize and start the server
-    stats.init();
-    stats.start();
+    server.init();
+    server.start();
 
 
     // Code that waits for the shutdown sinal for the server
     int signal = 0;
+
     int status = sigwait(&signals, &signal);
     if (status == 0)
     {
@@ -74,7 +75,7 @@ int main(int argc, char *argv[])
         std::cerr << "sigwait returns " << status << std::endl;
     }
 
-    stats.stop();
+    server.stop();
     
     return 0;
 }
