@@ -18,9 +18,7 @@
 using namespace std;
 using namespace pot;
 
-/// !!!
-/// THIS main IS THE DEMO CODE, I DID NOT TOUCH THIS YET, its pretty caca.
-/// !!!
+
 int main(int argc, char *argv[])
 {
 
@@ -36,10 +34,10 @@ int main(int argc, char *argv[])
     }
 
     // Set a port on which your server to communicate
-    Port port(9082);
+    Port port(9081);
 
     // Number of threads used by the server
-    int thr = 4;
+    int thr = 2;
     omp_set_num_threads(thr);
 
     if (argc >= 2) {

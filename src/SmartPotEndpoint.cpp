@@ -13,13 +13,35 @@
 
 #include <string>
 #include <omp.h>
-
 using namespace rapidjson;
 
 namespace pot
 {
     SmartPotEndpoint::SmartPotEndpoint(Address address)
-    {
+    {   
+        // Create a default SmartPot object.
+        map<int, map<string, Sensor>> sensorsAux;
+        map<string, Sensor> s;
+        map<string, Sensor> s_2;
+        Sensor s1("soilHumidity", 2, 3, 6);
+        Sensor s2("luminosity", 2,4,5);
+        Sensor s3("temperature", 3,3,3);
+        Sensor s4("soilType", "Red",3,3);
+        Sensor s5("humidity", 3,3,3);
+        Sensor s6("soilPh", 3,3,3);
+        s["soilHumidity"] = s1;
+        s["soilType"] = s4;
+        s["soilPh"] = s6;
+        s_2["temperature"] = s3;
+        s_2["luminosity"] = s2;
+        s_2["humidity"] = s5;
+        sensorsAux[1] = s;
+        sensorsAux[2] = s_2;
+        Plant p("Cactus", "Green", 1.3, "Desert", "Red");
+        smartPot = new SmartPot(p, sensorsAux);
+        cout<<smartPot->Find("soilHumidity")<<endl;
+        cout<<smartPot->GetSensor("soilHumidity").GetName()<<endl;
+
         // Create the HTTP Endpoint.
         httpEndpoint = std::make_shared<Http::Endpoint>(address);
 
@@ -112,11 +134,14 @@ namespace pot
         Routes::Get(router, "/settings/:settingName/",
                     Routes::bind(&SmartPotEndpoint::getSetting, this));
         
-        Routes::Get(router, "/loosenSoil",
-                    Routes::bind(&SmartPotEndpoint::loosenSoil, this));
+        Routes::Get(router, "/status",
+                    Routes::bind(&SmartPotEndpoint::getStatus, this));
 
-        Routes::Get(router, "/changeSoil",
-                    Routes::bind(&SmartPotEndpoint::changeSoil, this));
+        Routes::Get(router, "/shovel",
+                    Routes::bind(&SmartPotEndpoint::shovel, this));
+
+        Routes::Get(router, "/soilStatus",
+                    Routes::bind(&SmartPotEndpoint::soilStatus, this));
 
         Routes::Get(router, "/irrigationSoil",
                     Routes::bind(&SmartPotEndpoint::irrigationSoil, this));
@@ -158,16 +183,17 @@ namespace pot
         // Retrieve the setting name.
         string settingName = request.param(":settingName").as<string>();
 
+        cout<<settingName<<endl;
         // Retrieve the setting value.
         string settingValue = "";
         // If it does NOT exist.
-        if (smartPot.get(settingName, settingValue))
+        if (smartPot->Get(settingName, settingValue))
         {
             response.send(Http::Code::Not_Found, settingName + " was not found");
         }
         else
         {
-            response.send(Http::Code::Ok, settingName + " is " + settingValue);
+            response.send(Http::Code::Ok, settingValue);
             std::cout << settingName + " is " + settingValue << endl;
         }
     }
@@ -199,30 +225,55 @@ namespace pot
         double sensorTypeID = document["sensorType"].GetDouble();
 
         /*
-        1 - Ground sensor.
+        1 - Ground sensor. 
         2 - Temperature sensor
         3 - Luminosity sensor.
         4 - Humidity sensor.
         5 - Plant species.
         */
 
+        map <int, string> sensorNameMap = {
+            {1, "ground"},
+            {2, "temperature"},
+            {3, "luminosity"},
+            {4, "humidity"},
+            {5, "fertiliser"},
+            {6, "soilPh"},
+            {7, "soilHumidity"},
+            {8, "soilType"}
+        };
+
+
         double sensorMin = document["min"].GetDouble();
         double sensorMax = document["max"].GetDouble();
         // Valoarea o updatam in MQTT.
         message += to_string(sensorTypeID) + " " + to_string(sensorMin) + " " + to_string(sensorMax) + " ";
-
+        cout<<message<<endl;
         if (document["nutrientType"].IsNull())
         {
-            message += "NULL";
-            // smartPot.set(sensorTypeID, "min", NULL, sensorMin);
-            // smartPot.set(sensorTypeID, "max", NULL, sensorMin);
+        
+            Sensor aux = smartPot->GetSensor(sensorNameMap[sensorTypeID]);
+            aux.SetMaxValue(sensorMax);
+            aux.SetMinValue(sensorMin);
+
+            smartPot->Set(sensorNameMap[sensorTypeID], aux);
+            
+            Sensor aux2 = smartPot->GetSensor(sensorNameMap[sensorTypeID]);
+            cout << aux2.GetMaxValue() << " " <<aux2.GetMinValue()<<endl;
         }
         else
-        {
-            message += document["nutrientType"].GetString();
-            // smartPot.set(sensorTypeID, "min", document["nutrientType"].GetString(), sensorMin);
-            // smartPot.set(sensorTypeID, "max", document["nutrientType"].GetString(), sensorMin);
+        {   
+            Sensor aux = smartPot->GetSensor(document["nutrientType"].GetString());
+            aux.SetMaxValue(sensorMax);
+            aux.SetMinValue(sensorMin);
+
+            smartPot->Set(document["nutrientType"].GetString(), aux);
+            
+            Sensor aux2 = smartPot->GetSensor(document["nutrientType"].GetString());
+            cout << aux2.GetMaxValue() << " " <<aux2.GetMinValue()<<endl;
         }
+
+        response.send(Http::Code::Ok, message);
     }
 
     void SmartPotEndpoint::putPlantType(const Rest::Request &request,
@@ -293,87 +344,44 @@ namespace pot
         cout<<message<<endl;
     }
 
-    // void SmartPotEndpoint::getStatus(const Rest::Request &request,
-    //                                  Http::ResponseWriter response)
-    // {
-    //     string status = "";
-    //     // if (smartPot.status(status))
-    //     // {
-    //     //     response.send(Http::Code::Unprocessable_Entity, status);
-    //     // }
-    //     // else
-    //     // {
-    //     //     response.send(Http::Code::Ok, status);
-    //     // }
-    // }
+    void SmartPotEndpoint::getStatus(const Rest::Request &request,
+                                     Http::ResponseWriter response)
+    {
+        string status = "";
+        status += smartPot->DisplayPlantData()
+                + string("\n")
+                + smartPot->DisplayEnvironmentData();
+        response.send(Http::Code::Ok, status);
+    }
 
-    void SmartPotEndpoint::loosenSoil(const Rest::Request &request,
+    void SmartPotEndpoint::shovel(const Rest::Request &request,
                                       Http::ResponseWriter response)
     {
-        string soilLooseningStatus = "";
-        // if (smartPot.loosenSoil(soilLooseningStatus))
-        // {
-        //     response.send(Http::Code::Unprocessable_Entity, soilLooseningStatus);
-        // }
-        // else
-        // {
-        //     response.send(Http::Code::Ok, soilLooseningStatus);
+        response.send(Http::Code::Ok, smartPot->Shovel());
     }
     
-    void SmartPotEndpoint::changeSoil(const Rest::Request &request,
+    void SmartPotEndpoint::soilStatus(const Rest::Request &request,
                                       Http::ResponseWriter response)
     {
-        string soilChangeStatus = "";
-        // if (smartPot.changeSoil(soilChangeStatus))
-        // {
-        //     response.send(Http::Code::Unprocessable_Entity, soilChangeStatus);
-        // }
-        // else
-        // {
-        //     response.send(Http::Code::Ok, soilChangeStatus);
-        // }
+        response.send(Http::Code::Ok, smartPot->SoilStatus());
     }
 
     void SmartPotEndpoint::irrigationSoil(const Rest::Request &request,
                                           Http::ResponseWriter response)
     {
-        string irrigationSoilStatus = "";
-        // if (smartPot.irrigateSoil(irrigationSoilStatus))
-        // {
-        //     response.send(Http::Code::Unprocessable_Entity, irrigationSoilStatus);
-        // }
-        // else
-        // {
-        //     response.send(Http::Code::Ok, irrigationSoilStatus);
-        // }
+        response.send(Http::Code::Ok, smartPot->IrrigateSoil());
     }
 
     void SmartPotEndpoint::injectMinerals(const Rest::Request &request,
                                           Http::ResponseWriter response)
     {
-        string injectMineralsStatus = "";
-        // if (smartPot.injectMinerals(injectMineralsStatus))
-        // {
-        //     response.send(Http::Code::Unprocessable_Entity, injectMineralsStatus);
-        // }
-        // else
-        // {
-        //     response.send(Http::Code::Ok, injectMineralsStatus);
-        // }
+        response.send(Http::Code::Ok, smartPot->NutrientsInjector());
     }
 
     void SmartPotEndpoint::activateSolarLamp(const Rest::Request &request,
                                              Http::ResponseWriter response)
     {
-        string activateSolarLampStatus = "";
-        // if (smartPot.activateSolarLamp(addSolarLampStatus))
-        // {
-        //     response.send(Http::Code::Unprocessable_Entity, activateSolarLampStatus);
-        // }
-        // else
-        // {
-        //     response.send(Http::Code::Ok, activateSolarLampStatus);
-        // }
+        response.send(Http::Code::Ok, smartPot->SolarLamp());
     }
 
     void SmartPotEndpoint::mosquittoOnMessage (struct mosquitto *mosq,
@@ -424,8 +432,6 @@ namespace pot
             message += document["nutrientType"].IsNull() ? "NULL" : document["nutrientType"].GetString();
             message += document["value"].GetBool() ? " true" : " false";
         }
-
-        // message.c_str()
 
         mosquitto_publish(mosq, NULL, "test/response", 100, message.c_str(), 0, false);
 

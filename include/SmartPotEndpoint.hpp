@@ -54,10 +54,13 @@ namespace pot
         void getSetting         (const Rest::Request &request,
                                 Http::ResponseWriter response);
 
-        void loosenSoil         (const Rest::Request &request,
+        void getStatus          (const Rest::Request &request,
                                 Http::ResponseWriter response);
 
-        void changeSoil         (const Rest::Request &request,
+        void shovel             (const Rest::Request &request,
+                                Http::ResponseWriter response);
+
+        void soilStatus         (const Rest::Request &request,
                                 Http::ResponseWriter response);
 
         void irrigationSoil     (const Rest::Request &request,
@@ -99,7 +102,7 @@ namespace pot
         struct mosquitto *mosquittoSub;
 
         // The actual smart pot.
-        SmartPot smartPot;
+        SmartPot *smartPot;
 
         // Prohibits the threads to concurrently edit the same variable.
         Lock potLock;
