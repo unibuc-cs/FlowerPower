@@ -62,8 +62,14 @@ namespace pot
         void loosenSoil(const Rest::Request &request,
                         Http::ResponseWriter response);
 
-        // void setSoil    (const Rest::Request &request,
-        //                  Http::ResponseWriter response);
+        void changeSoil(const Rest::Request &request,
+                        Http::ResponseWriter response);
+
+        void irrigationSoil(const Rest::Request &request,
+                            Http::ResponseWriter response);
+
+        void activateSolarLamp(const Rest::Request &request,
+                               Http::ResponseWriter response);
 
         void createHttpRoutes(void);
 

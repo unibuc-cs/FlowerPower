@@ -112,17 +112,29 @@ namespace pot
         Routes::Get(router, "/settings/:settingName/",
                     Routes::bind(&SmartPotEndpoint::getSetting, this));
 
-        Routes::Put(router, "/settings",
-                    Routes::bind(&SmartPotEndpoint::postSettingUpdate, this));
-
-        Routes::Put(router, "/plantType",
-                    Routes::bind(&SmartPotEndpoint::postPlantType, this));
-
         Routes::Get(router, "/status",
                     Routes::bind(&SmartPotEndpoint::getStatus, this));
 
         Routes::Get(router, "/loosenSoil",
                     Routes::bind(&SmartPotEndpoint::loosenSoil, this));
+
+        Routes::Get(router, "/changeSoil",
+                    Routes::bind(&SmartPotEndpoint::changeSoil, this));
+
+        Routes::Get(router, "/irrigationSoil",
+                    Routes::bind(&SmartPotEndpoint::irrigationSoil, this));
+
+        Routes::Get(router, "/injectMinerals",
+                    Routes::bind(&SmartPotEndpoint::injectMinerals, this));
+
+        Routes::Get(router, "/activateSolarLamp",
+                    Routes::bind(&SmartPotEndpoint::activateSolarLamp, this));
+
+        Routes::Put(router, "/settings",
+                    Routes::bind(&SmartPotEndpoint::postSettingUpdate, this));
+
+        Routes::Put(router, "/plantInfo",
+                    Routes::bind(&SmartPotEndpoint::postPlantType, this));
     }
 
     ///
@@ -261,7 +273,7 @@ namespace pot
                                      Http::ResponseWriter response)
     {
         string status = "";
-        if (smartPot.getStatus(status))
+        if (smartPot.status(status))
         {
             response.send(Http::Code::Unprocessable_Entity, status);
         }
@@ -285,4 +297,59 @@ namespace pot
         }
     }
 
+    void SmartPotEndpoint::changeSoil(const Rest::Request &request,
+                                      Http::ResponseWriter response)
+    {
+        string soilChangeStatus = "";
+        if (smartPot.changeSoil(soilChangeStatus))
+        {
+            response.send(Http::Code::Unprocessable_Entity, soilChangeStatus);
+        }
+        else
+        {
+            response.send(Http::Code::Ok, soilChangeStatus);
+        }
+    }
+
+    void SmartPotEndpoint::irrigationSoil(const Rest::Request &request,
+                                          Http::ResponseWriter response)
+    {
+        string irrigationSoilStatus = "";
+        if (smartPot.irrigateSoil(irrigationSoilStatus))
+        {
+            response.send(Http::Code::Unprocessable_Entity, irrigationSoilStatus);
+        }
+        else
+        {
+            response.send(Http::Code::Ok, irrigationSoilStatus);
+        }
+    }
+
+    void SmartPotEndpoint::injectMinerals(const Rest::Request &request,
+                                          Http::ResponseWriter response)
+    {
+        string injectMineralsStatus = "";
+        if (smartPot.injectMinerals(injectMineralsStatus))
+        {
+            response.send(Http::Code::Unprocessable_Entity, injectMineralsStatus);
+        }
+        else
+        {
+            response.send(Http::Code::Ok, injectMineralsStatus);
+        }
+    }
+
+    void SmartPotEndpoint::activateSolarLamp(const Rest::Request &request,
+                                             Http::ResponseWriter response)
+    {
+        string activateSolarLampStatus = "";
+        if (smartPot.activateSolarLamp(addSolarLampStatus))
+        {
+            response.send(Http::Code::Unprocessable_Entity, activateSolarLampStatus);
+        }
+        else
+        {
+            response.send(Http::Code::Ok, activateSolarLampStatus);
+        }
+    }
 }
