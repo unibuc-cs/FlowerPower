@@ -1,0 +1,85 @@
+{
+    "device-name": "Not so smart flower pot",
+    "device-type": "Flower pot",
+    "description": "The newest smart flower pot on the market. Not the smartest, but good enough.",
+    "buffers-count": "3",
+    "input-buffers": {
+        "1": {
+            "token-delimitators": "",
+            "protocol": "HTTP",
+            "prefix": "curl -XGET 'http://127.0.0.1:8080/settings/:settingName'",
+            "buffer-tokens": [
+                {
+                    "name": "configuraionSettings",
+                    "description": "Get status of a pot's property",
+                    "token-type": "string",
+                    "byte-size": 10,
+                    "regex-rule": "[a-zA-Z]*",
+                    "optional": "false"
+                },
+
+            ]
+        },
+
+        "2": {
+            "token-delimitators": "",
+            "protocol": "HTTP",
+            "prefix": "curl -XPOST 'http://127.0.0.1:8080/settings/:settingName'",
+            "buffer-tokens": [
+                {
+                    "name": "",
+                    "description": "",
+                    "token-type": "",
+                    "byte-size": "",
+                    "regex-rule": "",
+                    "optional": ""
+                }, 
+                {
+                    "name": "",
+                    "description": "",
+                    "token-type": "",
+                    "byte-size": "",
+                    "regex-rule": "",
+                    "optional": ""
+                },
+            ]
+        },
+
+        "3": {
+
+        }
+    },
+    "outout-buffers": {
+        "1": {
+            "token-delimitators": "",
+            "protocol": "HTTP",
+            "prefix": "curl -XGET 'http://127.0.0.1:8080/'",
+            "buffer-tokens": [
+                {
+                    "name": "",
+                    "description": "",
+                    "token-type": "",
+                    "byte-size": "",
+                    "regex-rule": "",
+                    "optional": ""
+                },
+                {
+                    "name": "",
+                    "description": "",
+                    "token-type": "",
+                    "byte-size": "",
+                    "regex-rule": "",
+                    "optional": ""
+                }
+            ]
+        },
+
+        "2": {
+
+        },
+
+        "3": {
+
+        }
+    }
+}
