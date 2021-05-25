@@ -17,7 +17,7 @@
 
 using namespace std;
 
-namespace pot 
+namespace pot
 {
 class SmartPot
 {
@@ -27,7 +27,7 @@ class SmartPot
 public:
     SmartPot()
     {
-        
+
     }
 
     SmartPot(Plant _plant, const map<int, map<string, Sensor>> &_sensors)
@@ -35,7 +35,7 @@ public:
         plant = _plant;
         sensors = _sensors;
     }
-    
+
     bool Find(string nameToFind)
     {
         for(auto it = sensors.begin(); it != sensors.end(); ++it)
@@ -63,7 +63,7 @@ public:
         return Sensor();
     }
 
-    
+
     int Get(const string& name, Sensor& returnedValue)
     {
         // If the setting does not exist.
@@ -88,7 +88,7 @@ public:
             return 1;
         }
         else
-        {   
+        {
             Sensor aux = GetSensor(name);
             if(aux.GetStringValue().compare("") == 0)
             {
@@ -127,7 +127,7 @@ public:
 
         return 0;
     }
-    
+
     string Shovel()
     {
         return("0%Soil has been shovelled!");
@@ -148,15 +148,16 @@ public:
     {
         string returnMessage = "0%";
         string nutrientsInjected = "";
-        if(!Find("phosphorus"))
+        map <string, Sensor> groundSensor = sensors[1]->second;
+        if(groundSensor.find("phosphorus") == groundSensor.end())
             return "-1%No phosphorus found!";
-        if(!Find("nitrogen"))
+        if(groundSensor.find("nitrogen") == groundSensor.end())
             return "-1%No nitrogen found!";
-        if(!Find("potassium"))
+        if(groundSensor.find("potassium") == groundSensor.end())
             return "-1%No potassium found!";
-        Sensor ph = GetSensor("phosphorus");
-        Sensor n = GetSensor("nitrogen");
-        Sensor p = GetSensor("potassium");
+        Sensor ph = groundSensor["phosphorus"];
+        Sensor n = groundSensor["nitrogen"];
+        Sensor p = groundSensor["potassium"];
         if(ph.GetDoubleValue() < ph.GetMinValue())
         {
             ph.SetValue(ph.GetMaxValue());
