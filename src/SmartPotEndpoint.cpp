@@ -48,8 +48,6 @@ namespace pot
         sensorsAux[1] = s_3;
         Plant p("Cactus", "Green", 1.3, "Desert", "Red");
         smartPot = new SmartPot(p, sensorsAux);
-        cout<<smartPot->Find("soilHumidity")<<endl;
-        cout<<smartPot->GetSensor("soilHumidity").GetName()<<endl;
 
         // Create the HTTP Endpoint.
         httpEndpoint = std::make_shared<Http::Endpoint>(address);
@@ -243,7 +241,6 @@ namespace pot
         else
         {
             response.send(Http::Code::Ok, settingValue);
-            std::cout << settingName + " is " + settingValue << endl;
         }
     }
 
@@ -444,8 +441,6 @@ namespace pot
         }
 
         mosquitto_publish(mosq, NULL, "test/response", 100, message.c_str(), 0, false);
-
-        cout << message << endl;
     }
     
     void SmartPotEndpoint::mosquittoOnConnect (struct mosquitto *mosq,
