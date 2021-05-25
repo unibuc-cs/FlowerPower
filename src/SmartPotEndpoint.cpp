@@ -11,6 +11,7 @@
 #include <rapidjson/writer.h>
 #include <rapidjson/stringbuffer.h>
 
+#include <fstream>
 #include <string>
 #include <omp.h>
 using namespace rapidjson;
@@ -23,6 +24,7 @@ namespace pot
         map<int, map<string, Sensor>> sensorsAux;
         map<string, Sensor> s;
         map<string, Sensor> s_2;
+        map<string, Sensor> s_3;
         Sensor s1("soilHumidity", 2, 3, 6);
         Sensor s2("luminosity", 2,4,5);
         Sensor s3("temperature", 3,3,3);
@@ -35,8 +37,15 @@ namespace pot
         s_2["temperature"] = s3;
         s_2["luminosity"] = s2;
         s_2["humidity"] = s5;
-        sensorsAux[1] = s;
+        Sensor sPh("phosphorus", 1, 2, 3);
+        Sensor sN("nitrogen", 1, 2, 3);
+        Sensor sP("potassium", 1, 2, 3);
+        s_3["phosphorus"] = sPh;
+        s_3["nitrogen"] = sN;
+        s_3["potassium"] = sP;
+        sensorsAux[3] = s;
         sensorsAux[2] = s_2;
+        sensorsAux[1] = s_3;
         Plant p("Cactus", "Green", 1.3, "Desert", "Red");
         smartPot = new SmartPot(p, sensorsAux);
         cout<<smartPot->Find("soilHumidity")<<endl;
@@ -137,13 +146,13 @@ namespace pot
         Routes::Get(router, "/status",
                     Routes::bind(&SmartPotEndpoint::getStatus, this));
 
+        Routes::Get(router, "/soilStatus",
+                    Routes::bind(&SmartPotEndpoint::soilStatus, this));
+                    
         Routes::Get(router, "/shovel",
                     Routes::bind(&SmartPotEndpoint::shovel, this));
 
-        Routes::Get(router, "/soilStatus",
-                    Routes::bind(&SmartPotEndpoint::soilStatus, this));
-
-        Routes::Get(router, "/irrigationSoil",
+        Routes::Get(router, "/irrigateSoil",
                     Routes::bind(&SmartPotEndpoint::irrigationSoil, this));
 
         Routes::Get(router, "/injectMinerals",
@@ -152,6 +161,9 @@ namespace pot
         Routes::Get(router, "/activateSolarLamp",
                     Routes::bind(&SmartPotEndpoint::activateSolarLamp, this));
 
+
+        Routes::Put(router, "/settings/:settingName/:settingValue",
+                    Routes::bind(&SmartPotEndpoint::putSetting, this));
 
         Routes::Put(router, "/settings",
                     Routes::bind(&SmartPotEndpoint::putSettingUpdate, this));
@@ -183,9 +195,46 @@ namespace pot
         // Retrieve the setting name.
         string settingName = request.param(":settingName").as<string>();
 
-        cout<<settingName<<endl;
         // Retrieve the setting value.
         string settingValue = "";
+        // If it does NOT exist.
+        if (smartPot->Get(settingName, settingValue))
+        {
+            response.send(Http::Code::Not_Found, settingName + " was not found");
+        }
+        else
+        {
+            response.send(Http::Code::Ok, settingValue);
+        }
+    }
+
+
+    ///
+    /// @brief GET request function which returns the value of the
+    /// desired setting found in the :settingName parameter.
+    ///
+    /// @returns A response with the setting name and value if the setting exists
+    /// or a "Setting was not found" message otherwise.
+    ///
+    void SmartPotEndpoint::putSetting(const Rest::Request &request,
+                                      Http::ResponseWriter response)
+    {
+        // Lock the pot settings.
+        // TODO: REVISE THIS.
+        Guard guard(potLock);
+
+        // Setup some headers for the response.
+        using namespace Http;
+        response.headers()
+            .add<Header::Server>("pistache/0.2")
+            .add<Header::ContentType>(MIME(Text, Plain));
+
+        // Retrieve the setting name.
+        string settingName = request.param(":settingName").as<string>();
+
+        // Retrieve the setting value.
+        string settingValue = request.param(":settingName").as<string>();
+
         // If it does NOT exist.
         if (smartPot->Get(settingName, settingValue))
         {
@@ -219,58 +268,33 @@ namespace pot
             response.send(Http::Code::Unprocessable_Entity,
                           "The schema is not a valid JSON. Impossible to parse.");
         }
-
+        
         string message = "";
 
         double sensorTypeID = document["sensorType"].GetDouble();
-
-        /*
-        1 - Ground sensor. 
-        2 - Temperature sensor
-        3 - Luminosity sensor.
-        4 - Humidity sensor.
-        5 - Plant species.
-        */
-
-        map <int, string> sensorNameMap = {
-            {1, "ground"},
-            {2, "temperature"},
-            {3, "luminosity"},
-            {4, "humidity"},
-            {5, "fertiliser"},
-            {6, "soilPh"},
-            {7, "soilHumidity"},
-            {8, "soilType"}
-        };
-
-
         double sensorMin = document["min"].GetDouble();
         double sensorMax = document["max"].GetDouble();
+
         // Valoarea o updatam in MQTT.
-        message += to_string(sensorTypeID) + " " + to_string(sensorMin) + " " + to_string(sensorMax) + " ";
-        cout<<message<<endl;
         if (document["nutrientType"].IsNull())
         {
-        
             Sensor aux = smartPot->GetSensor(sensorNameMap[sensorTypeID]);
-            aux.SetMaxValue(sensorMax);
             aux.SetMinValue(sensorMin);
+            aux.SetMaxValue(sensorMax);
 
             smartPot->Set(sensorNameMap[sensorTypeID], aux);
             
             Sensor aux2 = smartPot->GetSensor(sensorNameMap[sensorTypeID]);
-            cout << aux2.GetMaxValue() << " " <<aux2.GetMinValue()<<endl;
         }
         else
         {   
             Sensor aux = smartPot->GetSensor(document["nutrientType"].GetString());
-            aux.SetMaxValue(sensorMax);
             aux.SetMinValue(sensorMin);
+            aux.SetMaxValue(sensorMax);
 
             smartPot->Set(document["nutrientType"].GetString(), aux);
             
             Sensor aux2 = smartPot->GetSensor(document["nutrientType"].GetString());
-            cout << aux2.GetMaxValue() << " " <<aux2.GetMinValue()<<endl;
         }
 
         response.send(Http::Code::Ok, message);
@@ -300,10 +324,6 @@ namespace pot
 
         string message = "";
 
-        if(!document["sensorType"].IsNumber())
-        {
-            response.send(Http::Code::Unprocessable_Entity, "sensorType field shall be a double.");
-        }
         if(!document["species"].IsString())
         {
             response.send(Http::Code::Unprocessable_Entity, "species field shall be a string.");
@@ -316,32 +336,27 @@ namespace pot
         {
             response.send(Http::Code::Unprocessable_Entity, "type field shall be a string.");
         }
-        if(!document["height"].IsDouble())
+        if(!document["height"].IsNumber())
         {
             response.send(Http::Code::Unprocessable_Entity, "height field shall be a double.");
         }
-        if(!document["edible"].IsBool())
+        if(!document["suitableSoilType"].IsString())
         {
-            response.send(Http::Code::Unprocessable_Entity, "edible field shall be a boolean.");
+            response.send(Http::Code::Unprocessable_Entity, "height field shall be a double.");
         }
 
-        double sensorTypeID = document["sensorType"].GetDouble();
         string species = document["species"].GetString();
         string color = document["color"].GetString();
         string type = document["type"].GetString();
         double height = document["height"].GetDouble();
-        bool edible = document["edible"].GetBool();
+        string suitableSoilType = document["suitableSoilType"].GetString();
 
         message += species + "  " + color + " " + " ";
         
-        // smartPot.set(sensorTypeID, "species", NULL, species); // String set.
-        // smartPot.set(sensorTypeID, "color",   NULL, color);   // String set.
-        // smartPot.set(sensorTypeID, "type",    NULL, type);    // String set.
-        // smartPot.set(sensorTypeID, "height",  NULL, height);  // Double set.
-        // smartPot.set(sensorTypeID, "edible",  NULL, edible);  // Bool   set.
+        Plant p(species, color, height, type, suitableSoilType);
+        smartPot->SetPlant(p);
 
-        // response.send(Http::Code::Ok, message);
-        cout<<message<<endl;
+        response.send(Http::Code::Ok, message);
     }
 
     void SmartPotEndpoint::getStatus(const Rest::Request &request,
@@ -351,6 +366,10 @@ namespace pot
         status += smartPot->DisplayPlantData()
                 + string("\n")
                 + smartPot->DisplayEnvironmentData();
+
+        ofstream statusFile("../../status.txt");
+        statusFile << status;
+        
         response.send(Http::Code::Ok, status);
     }
 
@@ -387,15 +406,10 @@ namespace pot
     void SmartPotEndpoint::mosquittoOnMessage (struct mosquitto *mosq,
                                                 void *obj,
                                                 const struct mosquitto_message *msg)
-    {
-	    // std::cout << string("New message with topic ")
-        //            + string(msg->topic) + ". Message : "
-        //            + string((char *) msg->payload) << endl; // We need to endl or flush the buffer.
-
+    {   
         Document document;
         if (document.Parse((char *) msg->payload).HasParseError() || document.IsObject() == false)
         {
-            cout<<"NU MERGE"<<endl;
             return ;
         }
 
@@ -403,34 +417,30 @@ namespace pot
 
         double sensorTypeID = document["sensorType"].GetDouble();
 
-        message += to_string(sensorTypeID) + " ";
+        string nutrientType = document["nutrientType"].IsNull() ? "" : document["nutrientType"].GetString();
 
+        
+        message += string("Senzorul ") + sensorNameMap[sensorTypeID] + " " +  nutrientType;
+        
         if(document["value"].IsNumber())
         {
-            // smartPot.set(sensorTypeID, "value",
-            //              document["nutrientType"].IsNull() ? NULL : document["nutrientType"].GetString(),
-            //              document["value"].GetDouble());
-            // cout<<"lol1"<<endl;
-            message += document["nutrientType"].IsNull() ? "NULL" : document["nutrientType"].GetString();
+            Sensor aux = smartPot->GetSensor(document["nutrientType"].IsNull() 
+                                            ? sensorNameMap[sensorTypeID] : nutrientType);
+            aux.SetValue(document["value"].GetDouble());
+            smartPot->Set(document["nutrientType"].IsNull() ? sensorNameMap[sensorTypeID] : nutrientType, aux);
+
+            message += string(" ") + (document["nutrientType"].IsNull() ? "NULL" : nutrientType);
             message += string(" ") + to_string(document["value"].GetDouble());
         }
         else if(document["value"].IsString())
         {
-            // smartPot.set(sensorTypeID, "value",
-            //              document["nutrientType"].IsNull() ? NULL : document["nutrientType"].GetString(),
-            //              document["value"].GetString());
-            
-            message += document["nutrientType"].IsNull() ? "NULL" : document["nutrientType"].GetString();
+            Sensor aux = smartPot->GetSensor(document["nutrientType"].IsNull() 
+                                            ? sensorNameMap[sensorTypeID] : nutrientType);
+            aux.SetValue(document["value"].GetString());
+            smartPot->Set(document["nutrientType"].IsNull() ? sensorNameMap[sensorTypeID] : nutrientType, aux);
+
+            message += string(" ") + (document["nutrientType"].IsNull() ? "NULL" : nutrientType);
             message += string(" ") + document["value"].GetString();
-        }
-        else if(document["value"].IsBool())
-        {
-            // smartPot.set(sensorTypeID, "value",
-            //              document["nutrientType"].IsNull() ? NULL : document["nutrientType"].GetString(),
-            //              document["value"].GetBool());
-            
-            message += document["nutrientType"].IsNull() ? "NULL" : document["nutrientType"].GetString();
-            message += document["value"].GetBool() ? " true" : " false";
         }
 
         mosquitto_publish(mosq, NULL, "test/response", 100, message.c_str(), 0, false);
@@ -460,4 +470,17 @@ namespace pot
     // {
     //     cout<<"Subscribed to topic: " <<endl;
     // }
+
+    map <int, string> SmartPotEndpoint::sensorNameMap = {
+            {1, "ground"},
+            {2, "temperature"},
+            {3, "luminosity"},
+            {4, "humidity"},
+            {5, "fertiliser"},
+            {6, "soilPh"},
+            {7, "soilHumidity"},
+            {8, "soilType"}
+    };
+
+    SmartPot*  SmartPotEndpoint::smartPot;
 }

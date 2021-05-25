@@ -128,6 +128,12 @@ public:
         return 0;
     }
 
+    int SetPlant(const Plant& _plant)
+    {
+        plant = _plant;
+        return 0;
+    }
+
     string Shovel()
     {
         return("0%Soil has been shovelled!");
@@ -148,7 +154,7 @@ public:
     {
         string returnMessage = "0%";
         string nutrientsInjected = "";
-        map <string, Sensor> groundSensor = sensors[1]->second;
+        map <string, Sensor> groundSensor = sensors[1];
         if(groundSensor.find("phosphorus") == groundSensor.end())
             return "-1%No phosphorus found!";
         if(groundSensor.find("nitrogen") == groundSensor.end())

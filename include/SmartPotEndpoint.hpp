@@ -73,6 +73,10 @@ namespace pot
                                 Http::ResponseWriter response);
         
         // PUTs.
+        
+        void putSetting         (const Rest::Request &request,
+                                Http::ResponseWriter response);
+
         void putSettingUpdate  (const Rest::Request &request,
                                 Http::ResponseWriter response);
 
@@ -92,7 +96,9 @@ namespace pot
         //                                   void *userdata, 
         //                                   int mid, int qos_count, 
         //                                   const int *granted_qos);
-    
+
+        static map <int, string> sensorNameMap;
+
         // Our Endpoint for the http server thread.
         std::shared_ptr<Http::Endpoint> httpEndpoint;
         // The router for our HTTP routes.
@@ -102,7 +108,7 @@ namespace pot
         struct mosquitto *mosquittoSub;
 
         // The actual smart pot.
-        SmartPot *smartPot;
+        static SmartPot *smartPot;
 
         // Prohibits the threads to concurrently edit the same variable.
         Lock potLock;
