@@ -19,7 +19,9 @@ WORKDIR /app/build
 RUN cmake .. && make && chmod 755 ./demo/main
 
 # Run
+COPY ./delay.sh /delay.sh
+RUN chmod 755 /delay.sh
 EXPOSE 9080
 RUN useradd -m dorel
 USER dorel
-CMD ["./demo/main"]
+CMD ["/delay.sh", "1", "./demo/main"]

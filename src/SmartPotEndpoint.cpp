@@ -104,7 +104,7 @@ namespace pot
             #pragma omp section
             {
                 // cout << "MQTT " << omp_get_thread_num() << endl;
-                if (mosquitto_connect(mosquittoSub, "localhost", 1883, 60))
+                if (mosquitto_connect(mosquittoSub, "mqtt_server", 1883, 60))
                 {
                     std::cout << "Could not connect to MQTT broker." << endl;
                 }
