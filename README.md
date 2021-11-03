@@ -92,3 +92,5 @@ As long as you don't add files or add god knows what weird libraries, you can si
 For now you can simply delete ALL the contents of build/ and rerun the cmake for a fresh build.
 
 ## GG
+
+This is just a test.
